@@ -11,7 +11,7 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Hades — Calendrier de foyer',
+        name: 'Hades Planner',
         short_name: 'Hades',
         description: 'Calendrier partagé pour votre foyer',
         theme_color: '#7c3aed',
@@ -25,6 +25,9 @@ export default defineConfig({
       },
     }),
   ],
+  define: {
+    __BUILD_DATE__: JSON.stringify(new Date().toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(' à', ' à')),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
