@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,7 +32,15 @@ export default function EventCreate() {
   const defaultDate = searchParams.get('date') ?? new Date().toISOString().slice(0, 10)
   const { members, currentMember } = useHousehold()
   const createEvent = useCreateEvent()
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(members.map(m => m.id))
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
+  const [submitError, setSubmitError] = useState('')
+
+  // Sélectionne tous les membres dès qu'ils sont chargés
+  useEffect(() => {
+    if (members.length > 0 && selectedMemberIds.length === 0) {
+      setSelectedMemberIds(members.map(m => m.id))
+    }
+  }, [members])
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -55,30 +63,55 @@ export default function EventCreate() {
     )
   }
 
-  const onSubmit = form.handleSubmit(async (data) => {
+  const submit = async () => {
+    setSubmitError('')
+    // Lire les valeurs directement (contourne les problèmes de validation iOS)
+    const data = form.getValues()
+    if (!data.title?.trim()) { setSubmitError('Le titre est requis.'); return }
+    if (!data.start_date) { setSubmitError('La date de début est requise.'); return }
+    if (!data.end_date) { setSubmitError('La date de fin est requise.'); return }
+    if (!currentMember) { setSubmitError('Membre introuvable — rechargez la page.'); return }
+
     const participant_ids = data.type === 'contrainte_perso'
-      ? [currentMember!.id]
+      ? [currentMember.id]
       : selectedMemberIds
 
-    await createEvent.mutateAsync({
-      ...data,
-      participant_ids,
-      start_time: data.all_day ? undefined : data.start_time,
-      end_time: data.all_day ? undefined : data.end_time,
-    })
-    navigate(-1)
+    try {
+      await createEvent.mutateAsync({
+        type: data.type,
+        title: data.title.trim(),
+        start_date: data.start_date,
+        end_date: data.end_date,
+        all_day: data.all_day ?? true,
+        participant_ids,
+        start_time: data.all_day ? undefined : data.start_time,
+        end_time: data.all_day ? undefined : data.end_time,
+        note: data.note ?? undefined,
+      })
+      navigate(-1)
+    } catch (e) {
+      setSubmitError((e as Error).message ?? 'Erreur lors de la création')
+    }
+  }
+
+  const onSubmit = form.handleSubmit(submit, (errors) => {
+    // Affiche la première erreur de validation
+    const first = Object.values(errors)[0]
+    setSubmitError(first?.message ?? 'Formulaire invalide')
   })
 
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="sticky top-0 bg-background z-10 flex items-center gap-3 px-4 py-3 border-b border-border">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4" /></Button>
-        <h1 className="font-semibold flex-1">Nouvel événement</h1>
-        <Button size="sm" onClick={onSubmit} disabled={createEvent.isPending}>
-          {createEvent.isPending ? 'Création…' : 'Créer'}
-        </Button>
+      <div className="sticky top-0 bg-background z-10 border-b border-border">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="w-4 h-4" /></Button>
+          <h1 className="font-semibold flex-1">Nouvel événement</h1>
+          <Button size="sm" onClick={submit} disabled={createEvent.isPending}>
+            {createEvent.isPending ? 'Création…' : 'Créer'}
+          </Button>
+        </div>
+        {submitError && <p className="px-4 pb-2 text-sm text-destructive">{submitError}</p>}
       </div>
-
       <form className="flex-1 px-4 py-4 space-y-5" onSubmit={onSubmit}>
         {/* Type */}
         <div className="flex gap-2">
