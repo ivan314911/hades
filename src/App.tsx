@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { HouseholdProvider } from './contexts/HouseholdContext'
 import Layout from './components/Layout'
 import Onboarding from './pages/Onboarding'
 import CalendarMonth from './pages/CalendarMonth'
-import CalendarWeek from './pages/CalendarWeek'
 import EventCreate from './pages/EventCreate'
 import EventDetail from './pages/EventDetail'
 import HouseholdPage from './pages/HouseholdPage'
@@ -30,7 +30,6 @@ function ProtectedRoutes() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<CalendarMonth />} />
-          <Route path="/semaine" element={<CalendarWeek />} />
           <Route path="/foyer" element={<HouseholdPage />} />
         </Route>
         <Route path="/evenement/nouveau" element={<EventCreate />} />
@@ -41,6 +40,12 @@ function ProtectedRoutes() {
 }
 
 export default function App() {
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then(reg => reg.update()).catch(() => {})
+    }
+  }, [])
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
