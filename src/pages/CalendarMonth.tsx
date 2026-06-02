@@ -9,21 +9,11 @@ import type { CalEventWithParticipants } from '@/lib/database.types'
 const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
 
-function toPastel(hex: string): string {
-  const clean = hex.startsWith('#') ? hex : '#888888'
-  const r = parseInt(clean.slice(1, 3), 16)
-  const g = parseInt(clean.slice(3, 5), 16)
-  const b = parseInt(clean.slice(5, 7), 16)
-  const mix = 0.48
-  return `rgb(${Math.round(r + (255 - r) * mix)},${Math.round(g + (255 - g) * mix)},${Math.round(b + (255 - b) * mix)})`
-}
-
 function ParticipantPie({ colors, size = 7 }: { colors: string[]; size?: number }) {
   if (colors.length === 0) return null
-  const pastel = colors.map(toPastel)
-  const bg = pastel.length === 1
-    ? pastel[0]
-    : `conic-gradient(${pastel.map((c, i) => `${c} ${(i / pastel.length) * 100}% ${((i + 1) / pastel.length) * 100}%`).join(',')})`
+  const bg = colors.length === 1
+    ? colors[0]
+    : `conic-gradient(${colors.map((c, i) => `${c} ${(i / colors.length) * 100}% ${((i + 1) / colors.length) * 100}%`).join(',')})`
   return (
     <span style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: bg }} />
   )
