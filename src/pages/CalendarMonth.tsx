@@ -194,12 +194,4 @@ function buildMonthGrid(year: number, month: number): (number | null)[] {
   return grid
 }
 
-function formatEventTime(iso: string) {
-  const d = new Date(iso)
-  const day = String(d.getDate()).padStart(2, '0')
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const year = String(d.getFullYear()).slice(2)
-  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  return `${day}/${month}/${year} à ${time}`
-}
 
