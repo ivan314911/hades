@@ -160,11 +160,6 @@ export default function CalendarMonth() {
                         />
                         <span className="font-medium text-sm truncate">{event.title}</span>
                       </span>
-                      {event.creator && (
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          Ajouté par {event.creator.name} le {formatEventTime(event.created_at)}
-                        </span>
-                      )}
                     </div>
                     {!event.all_day && event.start_time && (
                       <p className="text-xs text-muted-foreground mt-0.5">{event.start_time}{event.end_time ? ` – ${event.end_time}` : ''}</p>
