@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { CalendarDays, CalendarRange, Users } from 'lucide-react'
+import { CalendarDays, Users } from 'lucide-react'
 
 export default function Layout() {
   return (
@@ -10,11 +10,7 @@ export default function Layout() {
       <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-lg bg-background border-t border-border flex">
         <NavLink to="/" end className={({ isActive }) => navClass(isActive)}>
           <CalendarDays className="w-5 h-5" />
-          <span className="text-xs">Mois</span>
-        </NavLink>
-        <NavLink to="/semaine" className={({ isActive }) => navClass(isActive)}>
-          <CalendarRange className="w-5 h-5" />
-          <span className="text-xs">Semaine</span>
+          <span className="text-xs">Calendrier</span>
         </NavLink>
         <NavLink to="/foyer" className={({ isActive }) => navClass(isActive)}>
           <Users className="w-5 h-5" />

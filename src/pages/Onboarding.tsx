@@ -177,8 +177,7 @@ export default function Onboarding() {
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-1">
           <img src="/hades-logo.svg" alt="Hades" className="w-24 h-24 mx-auto drop-shadow-md" />
-          <h1 className="text-2xl font-bold">Hades</h1>
-          <p className="text-muted-foreground text-sm">Hades Planner</p>
+          <h1 className="text-2xl font-bold">Hades Planner</h1>
         </div>
 
         {step === 'auth' && (

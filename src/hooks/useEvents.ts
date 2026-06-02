@@ -1,10 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useHousehold } from '@/contexts/HouseholdContext'
 import type { CalEvent, CalEventWithParticipants, Member } from '@/lib/database.types'
 
 export function useEvents(year: number, month: number) {
   const { household, members } = useHousehold()
+  const qc = useQueryClient()
+
+  useEffect(() => {
+    if (!household) return
+    const channel = supabase
+      .channel(`cal_events_${household.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'cal_events',
+        filter: `household_id=eq.${household.id}`,
+      }, () => {
+        qc.invalidateQueries({ queryKey: ['cal_events'] })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [household?.id])
 
   return useQuery({
     queryKey: ['cal_events', household?.id, year, month],

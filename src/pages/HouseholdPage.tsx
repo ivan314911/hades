@@ -16,7 +16,7 @@ const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6'
 
 export default function HouseholdPage() {
   const { signOut } = useAuth()
-  const { household, members, currentMember } = useHousehold()
+  const { household, allHouseholds, members, currentMember, loading, error, switchHousehold } = useHousehold()
   const qc = useQueryClient()
   const [copied, setCopied] = useState(false)
   // color edit state removed
@@ -43,10 +43,36 @@ export default function HouseholdPage() {
     setEditingName(false)
   }
 
-  if (!household) return <div className="p-4 text-muted-foreground">Chargement…</div>
+  if (loading) return <div className="p-4 text-muted-foreground">Chargement…</div>
+  if (error || !household) return (
+    <div className="p-6 space-y-3">
+      <p className="font-medium text-destructive">Foyer introuvable</p>
+      <p className="text-sm text-muted-foreground">{error ?? 'Aucun foyer associé à ce compte.'}</p>
+      <Button variant="outline" onClick={signOut}>Se déconnecter</Button>
+    </div>
+  )
 
   return (
     <div className="px-4 py-4 space-y-6">
+      {/* Sélecteur de foyer (si plusieurs) */}
+      {allHouseholds.length > 1 && (
+        <div className="space-y-2">
+          <Label className="text-xs uppercase tracking-wide text-muted-foreground">Mes foyers</Label>
+          <div className="flex flex-col gap-1">
+            {allHouseholds.map(h => (
+              <button
+                key={h.id}
+                onClick={() => switchHousehold(h.id)}
+                className={`text-left px-3 py-2.5 rounded-xl font-medium transition-colors ${h.id === household.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-muted/70'}`}
+              >
+                {h.name}
+              </button>
+            ))}
+          </div>
+          <Separator />
+        </div>
+      )}
+
       <h1 className="text-xl font-bold">{household.name}</h1>
 
       {/* Invitation */}

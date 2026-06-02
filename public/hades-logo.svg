@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+
+  <!-- Left ear: semi-erect, tip folds forward (border collie style) -->
+  <path d="M62 78 Q48 52 54 32 Q60 18 72 28 Q78 40 74 68Z" fill="#1a1a1a"/>
+  <path d="M64 75 Q55 55 59 38 Q63 28 70 35 Q74 45 72 68Z" fill="#2e2e2e"/>
+  <!-- Left ear tip fold -->
+  <path d="M54 32 Q60 18 72 28 Q68 34 60 36 Q56 34 54 32Z" fill="#3a3a3a"/>
+
+  <!-- Right ear -->
+  <path d="M138 78 Q152 52 146 32 Q140 18 128 28 Q122 40 126 68Z" fill="#1a1a1a"/>
+  <path d="M136 75 Q145 55 141 38 Q137 28 130 35 Q126 45 128 68Z" fill="#2e2e2e"/>
+  <!-- Right ear tip fold -->
+  <path d="M146 32 Q140 18 128 28 Q132 34 140 36 Q144 34 146 32Z" fill="#3a3a3a"/>
+
+  <!-- Head — black -->
+  <ellipse cx="100" cy="100" rx="52" ry="50" fill="#1a1a1a"/>
+
+  <!-- White blaze (the border collie's signature marking) -->
+  <path d="M97 52 Q100 47 103 52 Q105 70 104 90 Q102 105 100 110 Q98 105 96 90 Q95 70 97 52Z" fill="#f0f0f0"/>
+
+  <!-- White muzzle -->
+  <ellipse cx="100" cy="120" rx="26" ry="20" fill="#e8e8e8"/>
+
+  <!-- Muzzle detail / split -->
+  <path d="M100 108 L100 116" stroke="#ccc" stroke-width="1" stroke-linecap="round"/>
+
+  <!-- Nose -->
+  <ellipse cx="100" cy="108" rx="10" ry="7" fill="#b04060"/>
+  <ellipse cx="100" cy="108" rx="8" ry="5.5" fill="#c8506e"/>
+  <!-- Nose shine -->
+  <ellipse cx="96" cy="105" rx="2.5" ry="1.8" fill="#e8809a"/>
+
+  <!-- Left eye -->
+  <ellipse cx="78" cy="93" rx="10" ry="9" fill="#fff"/>
+  <ellipse cx="78" cy="93" rx="7" ry="7" fill="#6b4000"/>
+  <ellipse cx="78" cy="93" rx="4.5" ry="4.5" fill="#111"/>
+  <ellipse cx="75.5" cy="90.5" rx="1.8" ry="1.8" fill="#fff"/>
+
+  <!-- Right eye -->
+  <ellipse cx="122" cy="93" rx="10" ry="9" fill="#fff"/>
+  <ellipse cx="122" cy="93" rx="7" ry="7" fill="#6b4000"/>
+  <ellipse cx="122" cy="93" rx="4.5" ry="4.5" fill="#111"/>
+  <ellipse cx="119.5" cy="90.5" rx="1.8" ry="1.8" fill="#fff"/>
+
+  <!-- Mouth -->
+  <path d="M88 128 Q100 134 112 128" stroke="#aaa" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+
+  <!-- White chest / neck -->
+  <ellipse cx="100" cy="158" rx="28" ry="16" fill="#e8e8e8"/>
+
+  <!-- Body (black, behind chest) -->
+  <ellipse cx="100" cy="168" rx="48" ry="22" fill="#1a1a1a"/>
+
+  <!-- White chest patch on body -->
+  <ellipse cx="100" cy="163" rx="22" ry="14" fill="#e8e8e8"/>
+
+</svg>

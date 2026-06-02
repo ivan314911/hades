@@ -1,8 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,10 +10,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useCreateEvent } from '@/hooks/useEvents'
 import { useHousehold } from '@/contexts/HouseholdContext'
-import { MemberDot } from '@/components/MemberBadge'
+import { cn } from '@/lib/utils'
 
 const schema = z.object({
-  type: z.enum(['contrainte_perso', 'evenement_famille']),
   title: z.string().min(1, 'Titre requis'),
   start_date: z.string().min(1),
   end_date: z.string().min(1),
@@ -30,22 +28,26 @@ export default function EventCreate() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const defaultDate = searchParams.get('date') ?? new Date().toISOString().slice(0, 10)
-  const { members, currentMember } = useHousehold()
+  const { currentMember, members } = useHousehold()
   const createEvent = useCreateEvent()
-  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
   const [submitError, setSubmitError] = useState('')
+  // null = Tous (tous les membres), sinon liste d'IDs spécifiques
+  const [selectedIds, setSelectedIds] = useState<string[] | null>(null)
 
-  // Sélectionne tous les membres dès qu'ils sont chargés
-  useEffect(() => {
-    if (members.length > 0 && selectedMemberIds.length === 0) {
-      setSelectedMemberIds(members.map(m => m.id))
+  const toggleMember = (id: string) => {
+    if (selectedIds === null) {
+      setSelectedIds([id])
+    } else if (selectedIds.includes(id)) {
+      const next = selectedIds.filter(x => x !== id)
+      setSelectedIds(next.length === 0 ? [id] : next)
+    } else {
+      const next = [...selectedIds, id]
+      setSelectedIds(next.length === members.length ? null : next)
     }
-  }, [members])
+  }
 
   const form = useForm<FormData>({
-    resolver: zodResolver(schema),
     defaultValues: {
-      type: 'evenement_famille',
       title: '',
       start_date: defaultDate,
       end_date: defaultDate,
@@ -54,36 +56,24 @@ export default function EventCreate() {
     },
   })
 
-  const watchType = form.watch('type')
   const watchAllDay = form.watch('all_day')
-
-  const toggleMember = (id: string) => {
-    setSelectedMemberIds(prev =>
-      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
-    )
-  }
 
   const submit = async () => {
     setSubmitError('')
-    // Lire les valeurs directement (contourne les problèmes de validation iOS)
     const data = form.getValues()
     if (!data.title?.trim()) { setSubmitError('Le titre est requis.'); return }
     if (!data.start_date) { setSubmitError('La date de début est requise.'); return }
     if (!data.end_date) { setSubmitError('La date de fin est requise.'); return }
     if (!currentMember) { setSubmitError('Membre introuvable — rechargez la page.'); return }
 
-    const participant_ids = data.type === 'contrainte_perso'
-      ? [currentMember.id]
-      : selectedMemberIds
-
     try {
       await createEvent.mutateAsync({
-        type: data.type,
+        type: 'evenement_famille',
         title: data.title.trim(),
         start_date: data.start_date,
         end_date: data.end_date,
         all_day: data.all_day ?? true,
-        participant_ids,
+        participant_ids: selectedIds ?? members.map(m => m.id),
         start_time: data.all_day ? undefined : data.start_time,
         end_time: data.all_day ? undefined : data.end_time,
         note: data.note ?? undefined,
@@ -93,12 +83,6 @@ export default function EventCreate() {
       setSubmitError((e as Error).message ?? 'Erreur lors de la création')
     }
   }
-
-  const onSubmit = form.handleSubmit(submit, (errors) => {
-    // Affiche la première erreur de validation
-    const first = Object.values(errors)[0]
-    setSubmitError(first?.message ?? 'Formulaire invalide')
-  })
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -112,31 +96,45 @@ export default function EventCreate() {
         </div>
         {submitError && <p className="px-4 pb-2 text-sm text-destructive">{submitError}</p>}
       </div>
-      <form className="flex-1 px-4 py-4 space-y-5" onSubmit={onSubmit}>
-        {/* Type */}
-        <div className="flex gap-2">
-          {(['contrainte_perso', 'evenement_famille'] as const).map(t => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => form.setValue('type', t)}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${watchType === t ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-            >
-              {t === 'contrainte_perso' ? '👤 Contrainte perso' : '👨‍👩‍👧 Événement famille'}
-            </button>
-          ))}
-        </div>
-
-        {/* Title */}
+      <form className="flex-1 px-4 py-4 space-y-5" onSubmit={e => e.preventDefault()}>
         <div className="space-y-1.5">
           <Label>Titre</Label>
           <Input {...form.register('title')} placeholder="Ex: Déplacement Lyon, Dîner chez tata…" autoFocus />
-          {form.formState.errors.title && (
-            <p className="text-destructive text-xs">{form.formState.errors.title.message}</p>
-          )}
         </div>
 
-        {/* Dates */}
+        <div className="space-y-1.5">
+          <Label>Qui est concerné ?</Label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedIds(null)}
+              className={cn(
+                'px-3 py-1 rounded-full text-sm font-medium border transition-colors',
+                selectedIds === null
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-background text-foreground border-border hover:bg-muted'
+              )}
+            >
+              Tous
+            </button>
+            {members.map(m => (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => toggleMember(m.id)}
+                className={cn(
+                  'px-3 py-1 rounded-full text-sm font-medium border transition-colors',
+                  (selectedIds === null || selectedIds.includes(m.id))
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-border hover:bg-muted'
+                )}
+              >
+                {m.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Début</Label>
@@ -148,7 +146,6 @@ export default function EventCreate() {
           </div>
         </div>
 
-        {/* All day */}
         <div className="flex items-center gap-2">
           <Checkbox
             id="all_day"
@@ -171,28 +168,6 @@ export default function EventCreate() {
           </div>
         )}
 
-        {/* Members (famille seulement) */}
-        {watchType === 'evenement_famille' && (
-          <div className="space-y-2">
-            <Label>Membres concernés</Label>
-            <div className="flex flex-wrap gap-2">
-              {members.map(m => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => toggleMember(m.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${selectedMemberIds.includes(m.id) ? 'text-white' : 'bg-muted text-muted-foreground'}`}
-                  style={selectedMemberIds.includes(m.id) ? { backgroundColor: m.color } : {}}
-                >
-                  <MemberDot member={m} size={6} />
-                  {m.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Note */}
         <div className="space-y-1.5">
           <Label>Note (optionnelle)</Label>
           <Textarea {...form.register('note')} placeholder="Détails…" rows={3} />

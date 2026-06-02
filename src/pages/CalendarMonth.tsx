@@ -1,27 +1,44 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useEvents } from '@/hooks/useEvents'
+import { useEvents, useDeleteEvent } from '@/hooks/useEvents'
 import { useHousehold } from '@/contexts/HouseholdContext'
-import { MemberDot } from '@/components/MemberBadge'
-import type { CalEventWithParticipants, Member } from '@/lib/database.types'
+import type { CalEventWithParticipants } from '@/lib/database.types'
 
 const DAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre']
+
+function toPastel(hex: string): string {
+  const clean = hex.startsWith('#') ? hex : '#888888'
+  const r = parseInt(clean.slice(1, 3), 16)
+  const g = parseInt(clean.slice(3, 5), 16)
+  const b = parseInt(clean.slice(5, 7), 16)
+  const mix = 0.48
+  return `rgb(${Math.round(r + (255 - r) * mix)},${Math.round(g + (255 - g) * mix)},${Math.round(b + (255 - b) * mix)})`
+}
+
+function ParticipantPie({ colors, size = 7 }: { colors: string[]; size?: number }) {
+  if (colors.length === 0) return null
+  const pastel = colors.map(toPastel)
+  const bg = pastel.length === 1
+    ? pastel[0]
+    : `conic-gradient(${pastel.map((c, i) => `${c} ${(i / pastel.length) * 100}% ${((i + 1) / pastel.length) * 100}%`).join(',')})`
+  return (
+    <span style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, display: 'inline-block', background: bg }} />
+  )
+}
 
 export default function CalendarMonth() {
   const navigate = useNavigate()
   const today = new Date()
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth() + 1)
-  const [filterMemberId, setFilterMemberId] = useState<string | null>(null)
-  const { members } = useHousehold()
-  const { data: events = [] } = useEvents(year, month)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-  const filteredEvents = filterMemberId
-    ? events.filter(e => e.participants.some(p => p.id === filterMemberId))
-    : events
+  const { data: events = [] } = useEvents(year, month)
+  const deleteEvent = useDeleteEvent()
+  const { currentMember } = useHousehold()
 
   const prev = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -36,45 +53,30 @@ export default function CalendarMonth() {
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalEventWithParticipants[]>()
-    for (const event of filteredEvents) {
+    for (const event of events) {
       const cur = new Date(event.start_date + 'T00:00:00')
       const end = new Date(event.end_date + 'T00:00:00')
       while (cur <= end) {
-        const key = cur.toISOString().slice(0, 10)
+        const key = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
         if (!map.has(key)) map.set(key, [])
         map.get(key)!.push(event)
         cur.setDate(cur.getDate() + 1)
       }
     }
     return map
-  }, [filteredEvents])
+  }, [events])
+
+  const selectedEvents = selectedDate ? (eventsByDate.get(selectedDate) ?? []) : []
+  const todayStr = today.toISOString().slice(0, 10)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 bg-background z-10 px-4 pt-4 pb-2 space-y-3 border-b border-border">
+      <div className="sticky top-0 bg-background z-10 px-4 pt-4 pb-2 border-b border-border">
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={prev}><ChevronLeft className="w-4 h-4" /></Button>
-          <h2 className="font-semibold">{MONTHS[month - 1]} {year}</h2>
+          <h2 className="font-semibold text-lg">{MONTHS[month - 1]} {year}</h2>
           <Button variant="ghost" size="icon" onClick={next}><ChevronRight className="w-4 h-4" /></Button>
-        </div>
-        {/* Member filter */}
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <button
-            onClick={() => setFilterMemberId(null)}
-            className={`px-3 py-1 rounded-full text-sm shrink-0 transition-colors ${!filterMemberId ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-          >Tous</button>
-          {members.map(m => (
-            <button
-              key={m.id}
-              onClick={() => setFilterMemberId(filterMemberId === m.id ? null : m.id)}
-              className={`px-3 py-1 rounded-full text-sm shrink-0 flex items-center gap-1.5 transition-colors ${filterMemberId === m.id ? 'text-white' : 'bg-muted text-muted-foreground'}`}
-              style={filterMemberId === m.id ? { backgroundColor: m.color } : {}}
-            >
-              <MemberDot member={m} size={6} />
-              {m.name}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -84,38 +86,109 @@ export default function CalendarMonth() {
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-7 flex-1 px-1 gap-y-1">
+      <div className="grid grid-cols-7 px-1 gap-y-2">
         {days.map((day, i) => {
           if (!day) return <div key={i} />
           const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
           const dayEvents = eventsByDate.get(dateStr) ?? []
-          const isToday = dateStr === today.toISOString().slice(0, 10)
-
+          const isToday = dateStr === todayStr
+          const isSelected = dateStr === selectedDate
           return (
             <button
               key={i}
-              className="flex flex-col items-center p-1 rounded-lg hover:bg-muted transition-colors min-h-[52px]"
-              onClick={() => navigate(`/evenement/nouveau?date=${dateStr}`)}
+              className={`flex flex-col items-center py-1.5 rounded-xl transition-colors ${isSelected ? 'bg-muted' : 'hover:bg-muted/50'}`}
+              onClick={() => setSelectedDate(isSelected ? null : dateStr)}
             >
-              <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm ${isToday ? 'bg-primary text-primary-foreground font-bold' : ''}`}>
+              <span className={`w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium transition-colors
+                ${isToday ? 'bg-primary text-primary-foreground' : ''}
+              `}>
                 {day}
               </span>
-              <div className="flex flex-wrap gap-0.5 justify-center mt-0.5">
-                {uniqueParticipants(dayEvents).slice(0, 4).map(m => (
-                  <MemberDot key={m.id} member={m} size={5} />
-                ))}
+              <div className="flex gap-0.5 mt-1 items-center">
+                {dayEvents.length > 0
+                  ? dayEvents.slice(0, 3).map((event, ci) => {
+                      const colors = event.participants.length > 0
+                        ? event.participants.map(p => p.color)
+                        : [event.creator?.color ?? '#888888']
+                      return <ParticipantPie key={ci} colors={colors} size={6} />
+                    })
+                  : <span className="w-1.5 h-1.5 invisible" />
+                }
               </div>
             </button>
           )
         })}
       </div>
+
+      {/* Day detail panel */}
+      {selectedDate && (
+        <div className="mt-2 border-t border-border px-4 pt-4 pb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-sm">
+              {new Date(selectedDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </h3>
+            <div className="flex items-center gap-1">
+              <Button size="icon" variant="ghost" className="w-7 h-7" onClick={() => navigate(`/evenement/nouveau?date=${selectedDate}`)}>
+                <Plus className="w-4 h-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="w-7 h-7" onClick={() => setSelectedDate(null)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          {selectedEvents.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Rien de prévu ce jour.</p>
+          ) : (
+            <div className="space-y-2">
+              {selectedEvents.map(event => (
+                <div
+                  key={event.id}
+                  className="w-full text-left px-3 py-2.5 rounded-xl bg-muted flex items-center gap-2"
+                >
+                  <button
+                    className="flex-1 min-w-0 text-left"
+                    onClick={() => navigate(`/evenement/${event.id}`)}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <ParticipantPie
+                          colors={event.participants.length > 0 ? event.participants.map(p => p.color) : [event.creator?.color ?? '#888888']}
+                          size={12}
+                        />
+                        <span className="font-medium text-sm truncate">{event.title}</span>
+                      </span>
+                      {event.creator && (
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          Ajouté par {event.creator.name} le {formatEventTime(event.created_at)}
+                        </span>
+                      )}
+                    </div>
+                    {!event.all_day && event.start_time && (
+                      <p className="text-xs text-muted-foreground mt-0.5">{event.start_time}{event.end_time ? ` – ${event.end_time}` : ''}</p>
+                    )}
+                    {event.note && <p className="text-xs text-muted-foreground mt-0.5 truncate">{event.note}</p>}
+                  </button>
+                  {event.created_by_member_id === currentMember?.id && (
+                    <button
+                      className="shrink-0 text-muted-foreground hover:text-destructive transition-colors p-1"
+                      onClick={() => deleteEvent.mutate(event.id)}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
 function buildMonthGrid(year: number, month: number): (number | null)[] {
   const firstDay = new Date(year, month - 1, 1).getDay()
-  // ISO: Monday = 0
   const offset = (firstDay + 6) % 7
   const daysInMonth = new Date(year, month, 0).getDate()
   const grid: (number | null)[] = Array(offset).fill(null)
@@ -124,13 +197,12 @@ function buildMonthGrid(year: number, month: number): (number | null)[] {
   return grid
 }
 
-function uniqueParticipants(events: CalEventWithParticipants[]): Member[] {
-  const seen = new Set<string>()
-  const result: Member[] = []
-  for (const e of events) {
-    for (const p of e.participants) {
-      if (!seen.has(p.id)) { seen.add(p.id); result.push(p) }
-    }
-  }
-  return result
+function formatEventTime(iso: string) {
+  const d = new Date(iso)
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = String(d.getFullYear()).slice(2)
+  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return `${day}/${month}/${year} à ${time}`
 }
+

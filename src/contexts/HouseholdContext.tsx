@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from './AuthContext'
@@ -6,67 +6,85 @@ import type { Household, Member } from '@/lib/database.types'
 
 interface HouseholdContextValue {
   household: Household | null
+  allHouseholds: Household[]
   members: Member[]
   currentMember: Member | null
   loading: boolean
+  error: string | null
+  switchHousehold: (id: string) => void
 }
 
 const HouseholdContext = createContext<HouseholdContextValue | null>(null)
 
+const STORAGE_KEY = 'hades_household_id'
+
 export function HouseholdProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const [currentMemberId, setCurrentMemberId] = useState<string | null>(null)
+  const [selectedHouseholdId, setSelectedHouseholdId] = useState<string | null>(
+    () => localStorage.getItem(STORAGE_KEY)
+  )
 
-  useEffect(() => {
-    if (!user) { setCurrentMemberId(null); return }
-    supabase
-      .from('user_households')
-      .select('member_id, household_id')
-      .eq('user_id', user.id)
-      .single()
-      .then(({ data }) => setCurrentMemberId(data?.member_id ?? null))
-  }, [user])
+  const switchHousehold = (id: string) => {
+    localStorage.setItem(STORAGE_KEY, id)
+    setSelectedHouseholdId(id)
+  }
 
-  const { data: household, isLoading: hLoading } = useQuery({
-    queryKey: ['household', user?.id],
+  // Récupère tous les foyers de l'utilisateur
+  const { data: allHouseholds = [], isLoading: hLoading } = useQuery({
+    queryKey: ['all_households', user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const { data: uh } = await supabase
+      const { data: rows } = await supabase
         .from('user_households')
         .select('household_id')
         .eq('user_id', user!.id)
-        .single()
-      if (!uh) return null
+      if (!rows?.length) return []
+      const ids = rows.map(r => r.household_id)
       const { data } = await supabase
         .from('households')
         .select('*')
-        .eq('id', uh.household_id)
-        .single()
-      return data as Household | null
+        .in('id', ids)
+      return (data ?? []) as Household[]
     },
   })
 
-  const { data: members = [], isLoading: mLoading } = useQuery({
-    queryKey: ['members', household?.id],
-    enabled: !!household,
+  // Foyer actif = celui sélectionné, sinon le premier disponible
+  const household = allHouseholds.find(h => h.id === selectedHouseholdId)
+    ?? allHouseholds[0]
+    ?? null
+
+  // Membres + currentMember en une seule query
+  const { data: membersData, isLoading: mLoading } = useQuery({
+    queryKey: ['members', household?.id, user?.id],
+    enabled: !!household && !!user,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('members')
-        .select('*')
-        .eq('household_id', household!.id)
-        .order('created_at')
-      return (data ?? []) as Member[]
+      const [{ data: membersRaw }, { data: uhRows }] = await Promise.all([
+        supabase.from('members').select('*').eq('household_id', household!.id).order('created_at'),
+        supabase.from('user_households').select('member_id').eq('user_id', user!.id).eq('household_id', household!.id),
+      ])
+      const members = (membersRaw ?? []) as Member[]
+      const memberId = uhRows?.[0]?.member_id ?? null
+      const currentMember = members.find(m => m.id === memberId) ?? null
+      return { members, currentMember }
     },
   })
 
-  const currentMember = members.find(m => m.id === currentMemberId) ?? null
+  const members = membersData?.members ?? []
+  const currentMember = membersData?.currentMember ?? null
+
+  const error = !hLoading && allHouseholds.length === 0
+    ? 'Aucun foyer trouvé pour ce compte.'
+    : null
 
   return (
     <HouseholdContext.Provider value={{
-      household: household ?? null,
+      household,
+      allHouseholds,
       members,
       currentMember,
       loading: hLoading || mLoading,
+      error,
+      switchHousehold,
     }}>
       {children}
     </HouseholdContext.Provider>

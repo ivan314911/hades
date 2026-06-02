@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { supabase } from '@/lib/supabase'
 import { useUpdateEvent, useDeleteEvent } from '@/hooks/useEvents'
 import { useHousehold } from '@/contexts/HouseholdContext'
-import { MemberAvatar, MemberDot } from '@/components/MemberBadge'
+import { MemberAvatar } from '@/components/MemberBadge'
 import type { CalEventWithParticipants } from '@/lib/database.types'
 
 const schema = z.object({
@@ -58,7 +58,6 @@ export default function EventDetail() {
   })
 
   const form = useForm<FormData>({ resolver: zodResolver(schema) })
-  const watchType = form.watch('type')
   const watchAllDay = form.watch('all_day')
 
   const startEdit = () => {
@@ -97,10 +96,6 @@ export default function EventDetail() {
     navigate(-1)
   }
 
-  const toggleMember = (mid: string) => {
-    setSelectedMemberIds(prev => prev.includes(mid) ? prev.filter(x => x !== mid) : [...prev, mid])
-  }
-
   const isOwner = event?.created_by_member_id === currentMember?.id
 
   if (isLoading) return <div className="flex items-center justify-center h-64 text-muted-foreground">Chargement…</div>
@@ -128,11 +123,6 @@ export default function EventDetail() {
       <div className="px-4 py-4 space-y-5">
         {!editing ? (
           <>
-            <div className="space-y-1">
-              <span className={`text-xs px-2 py-0.5 rounded-full ${event.type === 'contrainte_perso' ? 'bg-muted' : 'bg-primary/10 text-primary'}`}>
-                {event.type === 'contrainte_perso' ? '👤 Contrainte perso' : '👨‍👩‍👧 Événement famille'}
-              </span>
-            </div>
             <div>
               <p className="text-muted-foreground text-sm">
                 {event.start_date === event.end_date
@@ -141,17 +131,6 @@ export default function EventDetail() {
                 {!event.all_day && event.start_time && ` · ${event.start_time}${event.end_time ? ` – ${event.end_time}` : ''}`}
               </p>
             </div>
-            <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Participants</p>
-              <div className="flex flex-wrap gap-2">
-                {event.participants.map(p => (
-                  <div key={p.id} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-white" style={{ backgroundColor: p.color }}>
-                    <MemberAvatar member={p} className="w-5 h-5" />
-                    {p.name}
-                  </div>
-                ))}
-              </div>
-            </div>
             {event.note && (
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Note</p>
@@ -159,19 +138,17 @@ export default function EventDetail() {
               </div>
             )}
             {event.creator && (
-              <p className="text-xs text-muted-foreground">Créé par {event.creator.name}</p>
+              <div className="pt-2 border-t border-border flex items-center gap-2">
+                <MemberAvatar member={event.creator} className="w-6 h-6 text-xs shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  Ajouté par <span className="font-medium text-foreground">{event.creator.name}</span>
+                  {' · '}{formatDateTime(event.created_at)}
+                </p>
+              </div>
             )}
           </>
         ) : (
           <form className="space-y-5" onSubmit={onSave}>
-            <div className="flex gap-2">
-              {(['contrainte_perso', 'evenement_famille'] as const).map(t => (
-                <button key={t} type="button" onClick={() => form.setValue('type', t)}
-                  className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${watchType === t ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                  {t === 'contrainte_perso' ? '👤 Contrainte perso' : '👨‍👩‍👧 Famille'}
-                </button>
-              ))}
-            </div>
             <div className="space-y-1.5">
               <Label>Titre</Label>
               <Input {...form.register('title')} />
@@ -188,20 +165,6 @@ export default function EventDetail() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5"><Label>Début</Label><Input type="time" {...form.register('start_time')} /></div>
                 <div className="space-y-1.5"><Label>Fin</Label><Input type="time" {...form.register('end_time')} /></div>
-              </div>
-            )}
-            {watchType === 'evenement_famille' && (
-              <div className="space-y-2">
-                <Label>Membres</Label>
-                <div className="flex flex-wrap gap-2">
-                  {members.map(m => (
-                    <button key={m.id} type="button" onClick={() => toggleMember(m.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-colors ${selectedMemberIds.includes(m.id) ? 'text-white' : 'bg-muted text-muted-foreground'}`}
-                      style={selectedMemberIds.includes(m.id) ? { backgroundColor: m.color } : {}}>
-                      <MemberDot member={m} size={6} />{m.name}
-                    </button>
-                  ))}
-                </div>
               </div>
             )}
             <div className="space-y-1.5">
@@ -228,4 +191,10 @@ export default function EventDetail() {
 
 function formatDate(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+}
+
+function formatDateTime(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+    + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
