@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { CalendarDays, Users } from 'lucide-react'
+import { CalendarDays, Users, Trash2 } from 'lucide-react'
 
 export default function Layout() {
   return (
@@ -15,6 +15,10 @@ export default function Layout() {
         <NavLink to="/foyer" className={({ isActive }) => navClass(isActive)}>
           <Users className="w-5 h-5" />
           <span className="text-xs">Foyer</span>
+        </NavLink>
+        <NavLink to="/corbeille" className={({ isActive }) => navClass(isActive)}>
+          <Trash2 className="w-5 h-5" />
+          <span className="text-xs">Corbeille</span>
         </NavLink>
       </nav>
     </div>

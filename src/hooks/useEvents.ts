@@ -35,6 +35,7 @@ export function useEvents(year: number, month: number) {
         .from('cal_events')
         .select('*')
         .eq('household_id', household!.id)
+        .is('deleted_at', null)
         .lte('start_date', endDate)
         .gte('end_date', startDate)
         .order('start_date')
@@ -71,6 +72,7 @@ export function useWeekEvents(startDate: string, endDate: string) {
         .from('cal_events')
         .select('*')
         .eq('household_id', household!.id)
+        .is('deleted_at', null)
         .lte('start_date', endDate)
         .gte('end_date', startDate)
         .order('start_date')
@@ -181,9 +183,81 @@ export function useDeleteEvent() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('cal_events').delete().eq('id', id)
+      const { error } = await supabase
+        .from('cal_events')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id)
       if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['cal_events'] }),
+  })
+}
+
+export function useTrashEvents() {
+  const { household, members } = useHousehold()
+  const qc = useQueryClient()
+  const cutoff = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+
+  return useQuery({
+    queryKey: ['cal_events_trash', household?.id, members.length],
+    enabled: !!household && members.length > 0,
+    queryFn: async () => {
+      // Purge events older than 10 days
+      await supabase.from('cal_events').delete().eq('household_id', household!.id).not('deleted_at', 'is', null).lt('deleted_at', cutoff)
+      qc.invalidateQueries({ queryKey: ['cal_events'] })
+
+      const { data: events } = await supabase
+        .from('cal_events')
+        .select('*')
+        .eq('household_id', household!.id)
+        .not('deleted_at', 'is', null)
+        .gte('deleted_at', cutoff)
+        .order('deleted_at', { ascending: false })
+
+      if (!events?.length) return [] as CalEventWithParticipants[]
+
+      const { data: participants } = await supabase
+        .from('cal_event_participants')
+        .select('*')
+        .in('event_id', events.map(e => e.id))
+
+      const memberMap = new Map<string, Member>(members.map(m => [m.id, m]))
+
+      return events.map(event => ({
+        ...event,
+        participants: (participants ?? [])
+          .filter(p => p.event_id === event.id)
+          .map(p => memberMap.get(p.member_id))
+          .filter(Boolean) as Member[],
+        creator: memberMap.get(event.created_by_member_id) ?? null,
+      })) as CalEventWithParticipants[]
+    },
+  })
+}
+
+export function useRestoreEvent() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('cal_events').update({ deleted_at: null }).eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cal_events'] })
+      qc.invalidateQueries({ queryKey: ['cal_events_trash'] })
+    },
+  })
+}
+
+export function usePermanentDeleteEvent() {
+  const qc = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('cal_events').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cal_events_trash'] }),
   })
 }

@@ -9,6 +9,7 @@ import CalendarMonth from './pages/CalendarMonth'
 import EventCreate from './pages/EventCreate'
 import EventDetail from './pages/EventDetail'
 import HouseholdPage from './pages/HouseholdPage'
+import TrashPage from './pages/TrashPage'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000 } },
@@ -31,6 +32,7 @@ function ProtectedRoutes() {
         <Route element={<Layout />}>
           <Route path="/" element={<CalendarMonth />} />
           <Route path="/foyer" element={<HouseholdPage />} />
+          <Route path="/corbeille" element={<TrashPage />} />
         </Route>
         <Route path="/evenement/nouveau" element={<EventCreate />} />
         <Route path="/evenement/:id" element={<EventDetail />} />

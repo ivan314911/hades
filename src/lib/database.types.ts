@@ -36,6 +36,7 @@ export interface CalEvent {
   end_time: string | null
   note: string | null
   created_at: string
+  deleted_at: string | null
 }
 
 export interface CalEventParticipant {

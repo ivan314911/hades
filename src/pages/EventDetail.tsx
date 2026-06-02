@@ -178,7 +178,7 @@ export default function EventDetail() {
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent>
           <DialogHeader><DialogTitle>Supprimer cet événement ?</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">Cette action est irréversible.</p>
+          <p className="text-sm text-muted-foreground">L'événement sera déplacé dans la corbeille et supprimé définitivement après 10 jours.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDelete(false)}>Annuler</Button>
             <Button variant="destructive" onClick={onDelete} disabled={deleteEvent.isPending}>Supprimer</Button>
