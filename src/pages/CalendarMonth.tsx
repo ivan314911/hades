@@ -28,7 +28,7 @@ export default function CalendarMonth() {
 
   const { data: events = [] } = useEvents(year, month)
   const deleteEvent = useDeleteEvent()
-  const { currentMember } = useHousehold()
+  const { currentMember, members } = useHousehold()
 
   const prev = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12) }
@@ -69,6 +69,18 @@ export default function CalendarMonth() {
           <Button variant="ghost" size="icon" onClick={next}><ChevronRight className="w-4 h-4" /></Button>
         </div>
       </div>
+
+      {/* Legend */}
+      {members.length > 0 && (
+        <div className="flex justify-center gap-3 px-4 py-1.5 flex-wrap">
+          {members.map(m => (
+            <span key={m.id} className="flex items-center gap-1 text-xs text-muted-foreground">
+              <span style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: m.color, display: 'inline-block', flexShrink: 0 }} />
+              {m.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Day labels */}
       <div className="grid grid-cols-7 text-center text-xs text-muted-foreground font-medium py-2 px-1">
