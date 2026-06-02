@@ -25,8 +25,8 @@ export function useEvents(year: number, month: number) {
   }, [household?.id])
 
   return useQuery({
-    queryKey: ['cal_events', household?.id, year, month],
-    enabled: !!household,
+    queryKey: ['cal_events', household?.id, year, month, members.length],
+    enabled: !!household && members.length > 0,
     queryFn: async () => {
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`
       const endDate = new Date(year, month, 0).toISOString().slice(0, 10)
@@ -64,8 +64,8 @@ export function useWeekEvents(startDate: string, endDate: string) {
   const { household, members } = useHousehold()
 
   return useQuery({
-    queryKey: ['cal_events_week', household?.id, startDate, endDate],
-    enabled: !!household,
+    queryKey: ['cal_events_week', household?.id, startDate, endDate, members.length],
+    enabled: !!household && members.length > 0,
     queryFn: async () => {
       const { data: events } = await supabase
         .from('cal_events')
