@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useEvents, useDeleteEvent } from '@/hooks/useEvents'
@@ -21,9 +21,11 @@ function ParticipantPie({ colors, size = 7 }: { colors: string[]; size?: number 
 
 export default function CalendarMonth() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const today = new Date()
-  const [year, setYear] = useState(today.getFullYear())
-  const [month, setMonth] = useState(today.getMonth() + 1)
+
+  const year = parseInt(searchParams.get('year') ?? String(today.getFullYear()))
+  const month = parseInt(searchParams.get('month') ?? String(today.getMonth() + 1))
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   const { data: events = [] } = useEvents(year, month)
@@ -31,12 +33,12 @@ export default function CalendarMonth() {
   const { currentMember, members } = useHousehold()
 
   const prev = () => {
-    if (month === 1) { setYear(y => y - 1); setMonth(12) }
-    else setMonth(m => m - 1)
+    if (month === 1) setSearchParams({ year: String(year - 1), month: '12' })
+    else setSearchParams({ year: String(year), month: String(month - 1) })
   }
   const next = () => {
-    if (month === 12) { setYear(y => y + 1); setMonth(1) }
-    else setMonth(m => m + 1)
+    if (month === 12) setSearchParams({ year: String(year + 1), month: '1' })
+    else setSearchParams({ year: String(year), month: String(month + 1) })
   }
 
   const days = useMemo(() => buildMonthGrid(year, month), [year, month])
