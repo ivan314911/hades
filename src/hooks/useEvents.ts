@@ -29,7 +29,8 @@ export function useEvents(year: number, month: number) {
     enabled: !!household && members.length > 0,
     queryFn: async () => {
       const startDate = `${year}-${String(month).padStart(2, '0')}-01`
-      const endDate = new Date(year, month, 0).toISOString().slice(0, 10)
+      const lastDay = new Date(year, month, 0)
+      const endDate = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`
 
       const { data: events } = await supabase
         .from('cal_events')
