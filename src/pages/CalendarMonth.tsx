@@ -33,12 +33,12 @@ export default function CalendarMonth() {
   const { currentMember, members } = useHousehold()
 
   const prev = () => {
-    if (month === 1) setSearchParams({ year: String(year - 1), month: '12' })
-    else setSearchParams({ year: String(year), month: String(month - 1) })
+    if (month === 1) setSearchParams({ year: String(year - 1), month: '12' }, { replace: true })
+    else setSearchParams({ year: String(year), month: String(month - 1) }, { replace: true })
   }
   const next = () => {
-    if (month === 12) setSearchParams({ year: String(year + 1), month: '1' })
-    else setSearchParams({ year: String(year), month: String(month + 1) })
+    if (month === 12) setSearchParams({ year: String(year + 1), month: '1' }, { replace: true })
+    else setSearchParams({ year: String(year), month: String(month + 1) }, { replace: true })
   }
 
   const days = useMemo(() => buildMonthGrid(year, month), [year, month])
