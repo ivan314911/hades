@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useEvents, useDeleteEvent } from '@/hooks/useEvents'
@@ -21,24 +21,28 @@ function ParticipantPie({ colors, size = 7 }: { colors: string[]; size?: number 
 
 export default function CalendarMonth() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const today = new Date()
 
-  const year = parseInt(searchParams.get('year') ?? String(today.getFullYear()))
-  const month = parseInt(searchParams.get('month') ?? String(today.getMonth() + 1))
+  const [year, setYear] = useState(() => parseInt(sessionStorage.getItem('cal_year') ?? '') || today.getFullYear())
+  const [month, setMonth] = useState(() => parseInt(sessionStorage.getItem('cal_month') ?? '') || today.getMonth() + 1)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
+
+  useEffect(() => {
+    sessionStorage.setItem('cal_year', String(year))
+    sessionStorage.setItem('cal_month', String(month))
+  }, [year, month])
 
   const { data: events = [] } = useEvents(year, month)
   const deleteEvent = useDeleteEvent()
   const { currentMember, members } = useHousehold()
 
   const prev = () => {
-    if (month === 1) setSearchParams({ year: String(year - 1), month: '12' }, { replace: true })
-    else setSearchParams({ year: String(year), month: String(month - 1) }, { replace: true })
+    if (month === 1) { setYear(y => y - 1); setMonth(12) }
+    else setMonth(m => m - 1)
   }
   const next = () => {
-    if (month === 12) setSearchParams({ year: String(year + 1), month: '1' }, { replace: true })
-    else setSearchParams({ year: String(year), month: String(month + 1) }, { replace: true })
+    if (month === 12) { setYear(y => y + 1); setMonth(1) }
+    else setMonth(m => m + 1)
   }
 
   const days = useMemo(() => buildMonthGrid(year, month), [year, month])
